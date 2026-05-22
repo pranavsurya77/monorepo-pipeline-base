@@ -1,0 +1,33 @@
+FROM node:20-alpine
+
+# Enable pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+WORKDIR /usr/src/app
+
+# Copy workspace manifests
+COPY ./pnpm-workspace.yaml ./
+COPY ./packages ./packages
+COPY ./pnpm-lock.yaml ./
+COPY ./package.json ./
+COPY ./turbo.json ./
+
+# Copy only the frontend app
+COPY ./apps/web ./apps/web
+
+# Install all workspace dependencies
+RUN pnpm install
+
+# Generate Prisma client (needed before Next.js build)
+RUN pnpm run db:generate
+
+# Build only the frontend (and its workspace deps)
+RUN pnpm turbo run build --filter=web...
+
+EXPOSE 3000
+
+CMD ["pnpm", "run", "start:frontend"]
+
+
+# next js docker files becomes tricky  becuase during their build they talk with the db so you need to have it running during build time
+# they generate static pages from the db during build time if not careful so if you dont want that you can force dynamic into the pages that does that

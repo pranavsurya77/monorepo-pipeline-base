@@ -1,0 +1,24 @@
+FROM node:20-alpine
+
+# Enable pnpm via corepack (built into Node 20)
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+WORKDIR /usr/src/app
+
+# Copy workspace config + lockfile first (maximises layer cache)
+COPY pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml ./
+COPY package.json ./
+COPY turbo.json ./
+
+# Copy workspace packages and the backend app
+COPY packages ./packages
+COPY apps/backend ./apps/backend
+
+# Install all workspace dependencies using the frozen lockfile
+RUN pnpm install
+RUN pnpm run db:generate
+
+CMD [ "pnpm", "run", "start:backend" ]
+
+
